@@ -1,0 +1,310 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{% block title %}SmartShop{% endblock %}</title>
+
+    <!-- Fonts + Bootstrap -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+    :root {
+        --primary-bg: #1f3a5f; /* Deep blue */
+        --header-text: #ffffff;
+        --accent: #0d6efd; /* Bootstrap primary blue */
+        --body-font: "Inter", "Segoe UI", Roboto, Arial, sans-serif;
+    }
+
+    html, body {
+        height: 100%;
+        font-family: var(--body-font);
+    }
+
+    .navbar-custom {
+        background-color: var(--primary-bg);
+    }
+    .navbar-custom .navbar-brand,
+    .navbar-custom .nav-link,
+    .navbar-custom .text-white {
+        color: var(--header-text) !important;
+    }
+
+    .btn-primary {
+        background-color: var(--accent);
+        border-color: var(--accent);
+    }
+
+    a { color: var(--accent); }
+
+    /* Ensure product-image helpers keep consistent look */
+    .product-image-wrapper { background-color: #fafafa; padding: 8px; display:flex; align-items:center; justify-content:center; }
+    .product-image { max-width:100%; max-height:100%; object-fit:contain; }
+
+.autocomplete-item {
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.autocomplete-item:hover {
+  background-color: #f1f1f1;
+}
+
+#chatbot-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+}
+
+#chatbot-toggle {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  font-size: 24px;
+}
+
+#chatbot-box {
+  display: none;
+  width: 320px;
+  height: 420px;
+  background: white;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.chat-header {
+  background: var(--primary-bg);
+  color: white;
+  padding: 10px;
+  font-weight: bold;
+}
+
+#chat-messages {
+  height: 280px;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.chat-input {
+  display: flex;
+}
+
+.chat-input input {
+  flex: 1;
+  border: none;
+  padding: 10px;
+}
+
+.chat-input button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 10px;
+}
+
+
+    
+    </style>
+
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body class="bg-light">
+
+<nav class="navbar navbar-expand-lg navbar-custom sticky-top">
+  <div class="container">
+    <a class="navbar-brand d-flex align-items-center" href="{% url 'products_page' %}">
+      <img src="{% static 'images/smartshop_logo.svg' %}" alt="SmartShop logo" width="32" height="32" class="me-2"/>
+      <span class="text-white fw-bold">SmartShop</span>
+    </a>
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="mainNavbar">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+
+        {% if user.is_authenticated %}
+        <li class="nav-item">
+          <a class="nav-link text-white" href="{% url 'recommendation-dashboard' %}">For You</a>
+        </li>
+        {% endif %}
+
+        <li class="nav-item">
+          <a class="nav-link text-white" href="{% url 'products_page' %}">All Products</a>
+        </li>
+
+        {% if user.is_authenticated %}
+        <li class="nav-item">
+          <a class="nav-link text-white" href="#">Cart</a>
+        </li>
+        {% endif %}
+
+      </ul>
+
+      <div class="d-flex align-items-center">
+        {% if user.is_authenticated %}
+          <div class="dropdown">
+            <a class="btn btn-outline-light btn-sm dropdown-toggle" href="#" role="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+              {{ user.first_name|default:user.username }}
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+              <li class="px-3 py-2 disabled">
+                <div class="small text-muted">{{ user.get_full_name|default:user.username }}</div>
+                <div class="small text-muted">{{ user.email }}</div>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="#">Profile</a></li>
+              <li>
+                <form method="post" action="{% url 'logout' %}" class="m-0">
+                  {% csrf_token %}
+                  <button class="dropdown-item" type="submit">Logout</button>
+                </form>
+              </li>
+            </ul>
+          </div>
+        {% else %}
+          <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm">Login</a>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+</nav>
+
+<div class="container mt-4">
+  {% block content %}{% endblock %}
+</div>
+
+{% block scripts %}{% endblock %}
+
+<!-- Chatbot Floating Button -->
+{% if user.is_authenticated %}
+<div id="chatbot-container">
+  <button id="chatbot-toggle">💬</button>
+
+  <div id="chatbot-box" class="shadow" style="display:none;">
+    <div class="chat-header d-flex align-items-center gap-2">
+      <span style="font-size:18px;">🤖</span>
+      <strong>SmartShop Assistant</strong>
+    </div>
+
+    <div id="chat-messages"></div>
+        <!-- Messages will appear here -->
+    <div class="chat-input">
+      <input type="text" id="chat-input" placeholder="Ask me about products...">
+      <button onclick="sendChatMessage()">Send</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const toggle = document.getElementById("chatbot-toggle");
+const box = document.getElementById("chatbot-box");
+const chatMessages = document.getElementById("chat-messages");
+const chatInput = document.getElementById("chat-input");
+
+let greetingSent = false;
+
+// Toggle chatbot box
+toggle.onclick = () => {
+  const isOpening = box.style.display === "none";
+
+  box.style.display = isOpening ? "block" : "none";
+
+  if (isOpening) {
+    chatInput.focus();
+
+    if (!greetingSent) {
+      fetch("/chatbot/greeting/")
+        .then(res => res.json())
+        .then(data => {
+          const msgDiv = document.createElement("div");
+          msgDiv.innerHTML = `<strong>Assistant:</strong> ${data.reply}`;
+          msgDiv.classList.add("assistant-msg");
+          document.getElementById("chat-messages").appendChild(msgDiv);
+          document.getElementById("chat-messages").scrollTop =
+            document.getElementById("chat-messages").scrollHeight;
+          greetingSent = true;
+        })
+        .catch(err => console.error("Greeting error:", err));
+    }
+  }
+};
+
+// Helper to get CSRF token from cookies
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+// Send chat message (JSON POST)
+async function sendChatMessage() {
+  const message = chatInput.value.trim();
+  if (!message) return;
+
+  chatMessages.innerHTML += `<div><strong>You:</strong> ${message}</div>`;
+
+  try {
+    const response = await fetch("/chatbot/", {
+      method: "POST",
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+      },
+      body: JSON.stringify({ message })
+    });
+
+    if (!response.ok) {
+      chatMessages.innerHTML += `<div class='text-danger'>Assistant is unavailable. Please try again later.</div>`;
+      return;
+    }
+
+    const data = await response.json();
+    chatMessages.innerHTML += `<div><strong>Assistant:</strong> ${data.reply}</div>`;
+    chatInput.value = "";
+  } catch (err) {
+    chatMessages.innerHTML += `<div class='text-danger'>Error sending message.</div>`;
+  }
+}
+
+// Allow Enter to send
+chatInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    sendChatMessage();
+  }
+});
+</script>
+
+{% else %}
+<!-- Small prompt for anonymous users to log in to use the assistant -->
+<div style="position:fixed;bottom:20px;right:20px;z-index:9999;">
+  <a href="{% url 'login' %}?next=/recommendations/dashboard/"
+     class="btn btn-primary">
+    Login to chat with assistant
+  </a>
+</div>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

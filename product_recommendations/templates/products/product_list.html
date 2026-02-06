@@ -1,86 +1,68 @@
 {% extends 'base.html' %}
 
+{% block title %}All Products - SmartShop{% endblock %}
 
 {% block content %}
-    <!-- Page title + subtitle -->
-    <h2 class="text-center">Recommended for: {% if selected_user %}{{ selected_user.username }}{% else %}You{% endif %}</h2>
-    <p class="text-center text-muted">Personalized recommendations powered by AI</p>
+  <h2 class="mb-3">All Products</h2>
 
-    <!-- User selector (staff only) -->
-    {% if user.is_staff %}
-    <form method="get" id="user-select-form" class="mb-3">
-        <div class="row justify-content-center">
-            <div class="col-md-4">
-                <label for="userSelect" class="form-label">Select user:</label>
-                <select id="userSelect" name="user_id" class="form-select" onchange="document.getElementById('user-select-form').submit();">
-                    {% for u in users %}
-                    <option value="{{ u.id }}" {% if selected_user and u.id == selected_user.id %}selected{% endif %}>{{ u.username }}{% if u.email %} - {{ u.email }}{% endif %}</option>
-                    {% endfor %}
-                </select>
-            </div>
-        </div>
-    </form>
-    {% endif %}
-
-    <!-- Smart Search Section -->
-    <div class="row mb-4">
+  <!-- Smart Search Section -->
+  <div class="row mb-4">
     <div class="col-md-8 position-relative">
-        <input
+      <input
         type="text"
         id="searchInput"
         class="form-control"
         placeholder="Search products (e.g. wireless earbuds for gym, skincare for sensitive skin)"
         autocomplete="off"
-        />
+      />
 
-        <!-- Autocomplete dropdown -->
-        <div
+      <!-- Autocomplete dropdown -->
+      <div
         id="autocomplete-list"
         class="border bg-white position-absolute w-100"
         style="z-index: 1000;"
-        ></div>
+      ></div>
 
-        <div id="detectedFilters" class="mt-2" style="display:none;"></div>
+      <div id="detectedFilters" class="mt-2" style="display:none;"></div>
     </div>
 
     <div class="col-md-2">
-        <button class="btn btn-primary w-100" onclick="performSearch()">Search</button>
+      <button class="btn btn-primary w-100" onclick="performSearch()">Search</button>
     </div>
-    </div>
+  </div>
 
-    <!-- Smart Search Results -->
-    <div id="searchResults" class="row mb-4" style="display: none;"></div>
+  <!-- Smart Search Results -->
+  <div id="searchResults" class="row mb-4" style="display: none;"></div>
 
-    <!-- Recommendations block -->
-    <div id="recommendationsBlock">
-        <div id="recommendationHeaders" class="mb-3">
-            <h3 class="mb-0">Personalized recommendations</h3>
-            <p class="text-muted">Discovery / suggested products</p>
-        </div>
+  <!-- All Products Grid (shown when no search) -->
+  <div id="productsGrid">
+    <div class="row">
+      {% for product in products %}
+        <div class="col-md-4 mb-3">
+          <div class="card h-100">
 
-        <div class="row">
-            {% for item in recommendations %}
-            <div class="col-md-4 mb-3">
-                <div class="card shadow-sm h-100">
-                    {% if item.product.image_url %}
-                    <div class="product-image-wrapper" style="height:220px;">
-                        <img src="{{ item.product.image_url }}" class="product-image" alt="{{ item.product.name }}">
-                    </div>
-                    {% endif %}
+            {% if product.image_url %}
+              <div class="product-image-wrapper" style="height:180px;">
+                <img src="{{ product.image_url }}" class="product-image" alt="{{ product.name }}">
+              </div>
+            {% endif %}
 
-                    <div class="card-body">
-                        <h5 class="card-title">{{ item.product.name }}</h5>
-                        <p class="text-muted mb-1">{{ item.product.category.name }}</p>
-                        <p class="card-text">{{ item.product.description }}</p>
-                        <p class="fw-bold text-success">${{ item.product.price }}</p>
-                        <span class="badge bg-info">AI Score: {{ item.score }}</span>
-                        <div class="mt-3"><a href="{% url 'product_detail' item.product.id %}" class="btn btn-primary btn-sm">View Product</a></div>
-                    </div>
-                </div>
+            <div class="card-body d-flex flex-column">
+              <h5 class="card-title">{{ product.name }}</h5>
+              <p class="text-muted mb-1">{{ product.category.name }}</p>
+              <p class="fw-bold text-success mb-2">${{ product.price }}</p>
+
+              <div class="mt-auto">
+                <a href="{% url 'product_detail' product.id %}" class="btn btn-primary btn-sm">View Product</a>
+              </div>
             </div>
-            {% endfor %}
+          </div>
         </div>
+      {% empty %}
+        <p>No products available.</p>
+      {% endfor %}
     </div>
+  </div>
 {% endblock %}
 
 {% block scripts %}
@@ -88,16 +70,16 @@
 function performSearch() {
     const query = document.getElementById("searchInput").value.trim();
     const resultsContainer = document.getElementById("searchResults");
-    const recBlock = document.getElementById("recommendationsBlock");
+    const productsGrid = document.getElementById("productsGrid");
 
     if (!query) {
         resultsContainer.style.display = "none";
         resultsContainer.innerHTML = "";
-        if (recBlock) recBlock.style.display = "block";
+        if (productsGrid) productsGrid.style.display = "block";
         return;
     }
 
-    if (recBlock) recBlock.style.display = "none";
+    if (productsGrid) productsGrid.style.display = "none";
     resultsContainer.style.display = "flex";
     resultsContainer.innerHTML = "";
 
@@ -162,9 +144,9 @@ document.getElementById('searchInput').addEventListener('input', function(e) {
     clearTimeout(_searchTimer);
     _searchTimer = setTimeout(() => performSearch(), 350);
 });
+
 function viewProduct(productId) { window.location.href = `/products/${productId}/`; }
 </script>
-
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
@@ -202,16 +184,5 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
-<style>
-.autocomplete-item {
-  padding: 6px 10px;
-  cursor: pointer;
-}
-.autocomplete-item:hover {
-  background-color: #f1f1f1;
-}
-</style>
-
-<!-- Chatbot is handled globally in base.html -->
 
 {% endblock %}

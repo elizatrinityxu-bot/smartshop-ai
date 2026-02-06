@@ -6,7 +6,8 @@ from product_recommendations.models import (
     UserInteraction,
     Order,
     OrderItem,
-    Recommendation
+    Recommendation,
+    Review
 )
 
 admin.site.register(Category)
@@ -16,3 +17,4 @@ admin.site.register(UserInteraction)
 admin.site.register(Order)
 admin.site.register(OrderItem)
 admin.site.register(Recommendation)
+admin.site.register(Review)

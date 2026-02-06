@@ -1,27 +1,41 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 
 # -----------------------------
-# 3.1 User & Profile Models
+#   User & Profile Models
 # -----------------------------
 
 class UserProfile(models.Model):
-    """
-    Extends Django's built-in User model to store demographic
-    and preference-related features used for recommendation inference.
-    """
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    age = models.IntegerField(null=True, blank=True)
-    gender = models.CharField(max_length=10, blank=True)
-    location = models.CharField(max_length=100, blank=True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+
+    # Personalisation fields
+    preferred_categories = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Comma-separated list of preferred categories"
+    )
+    budget_level = models.CharField(
+        max_length=50,
+        help_text="Budget preference: low / medium / high"
+    )
+    tone_preference = models.CharField(
+        max_length=50,
+        help_text="Tone preference: friendly / practical / stylish / performance"
+    )
+    usage_context = models.CharField(
+        max_length=255,
+        help_text="Usage context such as gym, home, office"
+    )
 
     def __str__(self):
         return self.user.username
 
 
+
 # -----------------------------
-# 3.2 Product & Category Models
+#   Product & Category Models
 # -----------------------------
 
 class Category(models.Model):
@@ -29,6 +43,9 @@ class Category(models.Model):
     Represents product categories for classification and filtering.
     """
     name = models.CharField(max_length=100, unique=True)
+
+    class Meta:
+        verbose_name_plural = "Categories"
 
     def __str__(self):
         return self.name
@@ -40,17 +57,39 @@ class Product(models.Model):
     """
     name = models.CharField(max_length=200)
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
+
     price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    # Short UI description (optional)
     description = models.TextField(blank=True)
+
+    # Layer 1: Base description for AI grounding (required)
+    base_description = models.TextField()
+    
+    # Layer 2: AI-generated product description (cached)
+    ai_description = models.TextField(blank=True, null=True)
+    
+    # Inventory & visibility
     stock = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
+
+    # Product attributes for AI grounding
+    brand = models.CharField(max_length=100, blank=True, null=True)
+    material = models.CharField(max_length=255, blank=True, null=True)
+    ingredients = models.TextField(blank=True, null=True)
+    use_case = models.CharField(max_length=255, blank=True, null=True)
+    care_instructions = models.TextField(blank=True, null=True)
+
+    # Product image
+    image_url = models.URLField(blank=True, null=True)
 
     def __str__(self):
         return self.name
 
 
+
 # -----------------------------
-# 3.3 User Interaction Model
+#   User Interaction Model
 # -----------------------------
 
 class UserInteraction(models.Model):
@@ -79,7 +118,7 @@ class UserInteraction(models.Model):
 
 
 # -----------------------------
-# 3.4 Order & Purchase History Models
+#   Order & Purchase History Models
 # -----------------------------
 
 class Order(models.Model):
@@ -112,7 +151,7 @@ class OrderItem(models.Model):
 
 
 # -----------------------------
-# 3.5 Recommendation Output Model
+#   Recommendation Output Model
 # -----------------------------
 
 class Recommendation(models.Model):
@@ -134,3 +173,63 @@ class Recommendation(models.Model):
 
     def __str__(self):
         return f"{self.user.username} → {self.product.name} ({self.score})"
+
+
+# -----------------------------
+#   Review Model
+# -----------------------------
+
+
+class Review(models.Model):
+    """
+    Stores customer reviews for products.
+    """
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="reviews"
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE
+    )
+
+    rating = models.IntegerField(
+    validators=[MinValueValidator(1), MaxValueValidator(5)]
+    )  
+        
+    review_text = models.TextField()
+
+    # AI-generated fields (cached)
+    sentiment_label = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True
+    )
+    ai_summary_cache = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_summarized_at = models.DateTimeField(
+        blank=True,
+        null=True
+    )
+
+    def __str__(self):
+        return f"{self.product.name} - {self.rating}★"
+
+
+# -----------------------------
+#   ChatMessage Model
+# -----------------------------
+
+class ChatMessage(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    message = models.TextField()
+    response = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username}: {self.message[:30]}"
