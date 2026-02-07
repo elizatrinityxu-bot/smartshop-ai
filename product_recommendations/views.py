@@ -181,7 +181,7 @@ def submit_review(request, product_id):
     # For other methods, redirect back to product page
     return redirect('product_detail', product_id=product_id)
 
-@login_required    
+    
 def products_page(request):
     """Public product listing UI (non-authenticated users allowed)."""
     products = Product.objects.filter(is_active=True)
